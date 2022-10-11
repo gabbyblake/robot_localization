@@ -6,6 +6,7 @@ import rclpy
 from threading import Thread
 from rclpy.time import Time
 from rclpy.node import Node
+from robot_localization import occupancy_field
 from std_msgs.msg import Header
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray, Pose, Point, Quaternion
@@ -76,9 +77,9 @@ class ParticleFilter(Node):
         self.odom_frame = "odom"        # the name of the odometry coordinate frame
         self.scan_topic = "scan"        # the topic where we will get laser scans from 
 
-        self.n_particles = 300          # the number of particles to use
+        self.n_particles = 500          # the number of particles to use
 
-        self.d_thresh = 0.3             # the amount of linear movement before performing an update
+        self.d_thresh = 0.2             # the amount of linear movement before performing an update
         self.a_thresh = math.pi/6       # the amount of angular movement before performing an update
 
 
@@ -172,11 +173,13 @@ class ParticleFilter(Node):
             self.initialize_particle_cloud(msg.header.stamp)
         elif self.moved_far_enough_to_update(new_odom_xy_theta):
             # we have moved far enough to do an update!
+            print(len(self.particle_cloud))
             self.update_particles_with_odom()    # update based on odometry
-            self.publish_particles(msg.header.stamp)
-            #self.update_particles_with_laser(r, theta)   # update based on laser scan
-            #self.update_robot_pose()                # update robot's pose based on particles
-            #self.resample_particles()               # resample particles to focus on areas of high density
+            #self.publish_particles(msg.header.stamp)
+            self.update_particles_with_laser(r, theta)   # update based on laser scan
+            self.update_robot_pose()                # update robot's pose based on particles
+            self.resample_particles()               # resample particles to focus on areas of high density
+            
         # publish particles (so things like rviz can see them)
         self.publish_particles(msg.header.stamp)
 
@@ -198,18 +201,33 @@ class ParticleFilter(Node):
         y_position = xy_theta[1]
         theta = xy_theta[2]
         
-        
-        self.x_distribution = np.random.normal(x_position, 1.0, self.n_particles).tolist()
-        self.y_distribution = np.random.normal(y_position, 1.0, self.n_particles).tolist()
-        self.theta_distribution = np.random.normal(theta, 1.0, self.n_particles).tolist()
+        self.x_distribution = []
+        self.y_distribution = []
+        self.theta_distribution = []
+
+        # self.x_distribution = np.random.normal(x_position, 2.0, self.n_particles).tolist()
+        # self.y_distribution = np.random.normal(y_position, 2.0, self.n_particles).tolist()
+        # self.theta_distribution = np.random.normal(theta, 2.0, self.n_particles).tolist()
         self.weight_distribution = [1.0] * self.n_particles
 
+        ((x_lower, x_upper), (y_lower, y_upper)) = self.occupancy_field.get_obstacle_bounding_box()
         for num in range(len(self.weight_distribution)):
-            x = self.x_distribution[num]
-            y = self.y_distribution[num]
-            theta = self.theta_distribution[num]
+
+            x = np.random.normal(x_position, 0.25)
+            y = np.random.normal(y_position, 0.25)
+            t = np.random.normal(theta, 20 * (2*math.pi / 360))
+            while not ((x_lower < x < x_upper) and (y_lower < y < y_upper)):
+                x = np.random.normal(x_position, 0.25)
+                y = np.random.normal(y_position, 0.25)
+            
+            self.x_distribution.append(x)
+            self.y_distribution.append(y)
+            self.theta_distribution.append(theta)
+            # x = self.x_distribution[num]
+            # y = self.y_distribution[num]
+            # theta = self.theta_distribution[num]
             w = self.weight_distribution[num]
-            self.particle_cloud.append(Particle(x, y, theta, w))
+            self.particle_cloud.append(Particle(x, y, t, w))
 
         # self.normalize_particles() this will be done right after weights are determined, so not here
 
@@ -233,34 +251,23 @@ class ParticleFilter(Node):
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
-
         theta_1 = math.atan2(delta[1],delta[0]) - self.current_odom_xy_theta[2]
         r = math.sqrt((delta[0]**2) + (delta[1]**2))
+        #theta_2 = new_odom_xy_theta - math.atan2(delta[1],delta[0])
         theta_2 = delta[2] - theta_1
 
         # update particles based on odom, but allow for inaccuracy of odometry
-        new_particle_cloud = []
         for particle in self.particle_cloud:
             new_theta_1 = np.random.normal(theta_1, 3*(2* math.pi / 360))
-            new_r = np.random.normal(r, 0.1)
-            print(new_r)
+            new_r = np.random.normal(r, 0.15)
             new_theta_2 = np.random.normal(theta_2, 3*(2* math.pi / 360))# maybe even 10 degrees
-            new_x = new_r * math.cos(new_theta_1 + new_theta_2)
-            new_y = new_r * math.sin(new_theta_1 + new_theta_2)
-            #print("x: " + new_x.toString())
-            #print("y: " + new_y.toString())
-            # represent the rotation, then driving straight (translation) , then rotation again
-            new_particle = Particle()
-            new_particle.theta = particle.theta + new_theta_1
-            new_particle.x = particle.x + new_x
-            new_particle.y = particle.y + new_y
-            new_particle.theta = new_particle.theta + new_theta_2
-            new_particle_cloud.append(new_particle)
-            
-        self.particle_cloud = new_particle_cloud
-        s = len(self.particle_cloud)
-        # TODO: modify particles using delta
-    
+
+            particle.theta += new_theta_1
+            particle.x += new_r * math.cos(particle.theta)
+            particle.y += new_r * math.sin(particle.theta)
+            particle.theta += new_theta_2
+
+
     def update_particles_with_laser(self, r, theta):
         """ Updates the particle weights in response to the scan data
             r: the distance readings to obstacles
@@ -273,13 +280,18 @@ class ParticleFilter(Node):
             particle.w = 0.0
             for angle in range(len(r)):
                 # in map frame
-                if not math.isnan(r[angle]):
-                    x_pos = r[angle] * math.cos(theta[angle]) + particle.x
-                    y_pos = r[angle] * math.sin(theta[angle]) + particle.y
+                if not (math.isnan(r[angle]) or math.isinf(r[angle])):
+
+
+                    # rotate then translate the scans
+                    x_pos = r[angle] * math.cos(theta[angle] + particle.theta) + particle.x
+                    y_pos = r[angle] * math.sin(theta[angle] + particle.theta) + particle.y
+
+
                     distance = self.occupancy_field.get_closest_obstacle_distance(x_pos, y_pos)
                     #print(distance)
                     if not math.isnan(distance):
-                        if distance < 0.2:
+                        if distance == 0.0:
                             particle.w = particle.w + 1
             self.weight_distribution.append(particle.w)
         
@@ -292,24 +304,51 @@ class ParticleFilter(Node):
                 (2): compute the most likely pose (i.e. the mode of the distribution)
         """
         # first make sure that the particle weights are normalized
-        self.normalize_particles()
+        #self.normalize_particles()
+
+
         # Method 1, mean pose
         mean_x = sum(self.x_distribution) / self.n_particles
         mean_y = sum(self.y_distribution) / self.n_particles
         mean_theta = sum(self.theta_distribution) / self.n_particles
-        pose = self.xy_theta_to_pose(mean_x, mean_y, mean_theta)
 
-        # # Method 2, most likely pose
-        # highest_weight = mode(self.weight_distribution)
+        mean_cos = [math.cos(theta) for theta in self.theta_distribution]
+        mean_sin = [math.sin(theta) for theta in self.theta_distribution]
+
+        # mean_diff = mean_sin / mean_cos
+        # mean_theta = [math.atan2(diff) for diff in mean_diff]
+
+        # thetas = [int(math.atan2(sin, cos)) for sin,cos in zip(mean_sin, mean_cos)]
+        # mean_theta = sum(thetas) / self.n_particles
+        
+        if  0 < mean_theta < math.pi/2:
+            extra_x = -0.1
+            extra_y = -0.1
+        elif math.pi/2 < mean_theta < math.pi:
+            extra_x = 0.1
+            extra_y = -0.1
+        elif math.pi < mean_theta < 3*math.pi/2:
+            extra_x = 0.1
+            extra_y = 0.1
+        elif 3*math.pi/2 < mean_theta < 2*math.pi:
+            extra_x = -0.1
+            extra_y = 0.1
+        else:
+            extra_x = 0.0
+            extra_y = 0.0
+        pose = self.xy_theta_to_pose(mean_x+ extra_x, mean_y + extra_y, mean_theta)
+
+
+        # Method 2, most likely pose
+        # best_particle = mode(self.particle_cloud)
+        # highest_weight = mode(self.particle_cloud)
         # index = self.weight_distribution.index(highest_weight)
-        # pose_x = self.x_distribution[index]
-        # pose_y = self.y_distribution[index]
-        # pose_theta = self.theta_distribution[index]
-        # pose = self.xy_theta_to_pose(pose_x, pose_y, pose_theta)
+        # best_particle = self.particle_cloud[index]
+        # pose = self.xy_theta_to_pose(best_particle.x, best_particle.y, best_particle.theta)
 
-        # TODO: assign the latest pose into self.robot_pose as a geometry_msgs.Pose object
         # just to get started we will fix the robot's pose to always be at the origin
         self.robot_pose = pose
+        #self.robot_pose = Pose()
 
         self.transform_helper.fix_map_to_odom_transform(self.robot_pose,
                                                         self.odom_pose)
@@ -320,22 +359,13 @@ class ParticleFilter(Node):
             particle is selected in the resampling step.  You may want to make use of the given helper
             function draw_random_sample in helper_functions.py.
         """
-        new_x_distribution = draw_random_sample(self.x_distribution, self.weight_distribution, self.n_particles)
-        new_y_distribution = draw_random_sample(self.y_distribution, self.weight_distribution, self.n_particles)
-        new_theta_distribution = draw_random_sample(self.theta_distribution, self.weight_distribution, self.n_particles)
-        self.x_distribution = new_x_distribution
-        self.y_distribution = new_y_distribution
-        self.theta_distribution = new_theta_distribution
-
-        self.particle_cloud = []
-        for num in range(len(self.weight_distribution)):
-            x = self.x_distribution[num]
-            y = self.y_distribution[num]
-            theta = self.theta_distribution[num]
-            w = 1.0
-            self.particle_cloud.append(Particle(x, y, theta, w))
-        # self.normalize_particles()
-        # TODO: fill out the rest of the implementation
+        new_particle_cloud = draw_random_sample(self.particle_cloud, self.weight_distribution, self.n_particles)
+        self.particle_cloud = new_particle_cloud
+        
+        self.x_distribution = [particle.x for particle in self.particle_cloud]
+        self.y_distribution = [particle.y for particle in self.particle_cloud]
+        self.theta_distribution = [particle.theta for particle in self.particle_cloud]
+        
 
 
     def update_initial_pose(self, msg):
