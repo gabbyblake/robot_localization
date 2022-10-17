@@ -36,7 +36,7 @@ One challenge I faced along the way for this project was figuring out the correc
 ---
 ### Future Improvements
 
-If I had more time I would have tried implementing the adaptive version of the Monte Carlo particle filter which I researched and found to be a more computationally efficient particle filter and a good challenege. I would also remove the hard code I mentioned in the **Key Design Decisions** section and find a better, more automated and logical way to improve the estimated robot pose.
+If I had more time I would have tried implementing the adaptive version of the Monte Carlo particle filter which I researched and found to be a more computationally efficient particle filter and a good challenege. I would also remove the hard code I mentioned in the *Key Design Decisions* section and find a better, more automated and logical way to improve the estimated robot pose.
 
 ---
 ### Lessons
