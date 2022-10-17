@@ -32,10 +32,12 @@ A design decision I had to make towards the end of this project was how to estim
 ### Challenges
 
 One challenge I faced along the way for this project was figuring out the correct trigonmetric functions to apply at various steps of the filter. I understood the concepts at a high level, but implementing it in code was slightly different process. I could undertsand and code the first 70% of what tranformations needed to be applied to when updating particles based on the odometry of the robot and weighting particles by evaluating their proposed scans to the real scan, but I usually had to go to office hours or ask the professors for assistance in understanding and implementing the last 30%.
+
 ---
 ### Future Improvements
 
 If I had more time I would have tried implementing the adaptive version of the Monte Carlo particle filter which I researched and found to be a more computationally efficient particle filter and a good challenege. I would also remove the hard code I mentioned in the **Key Design Decisions** section and find a better, more automated and logical way to improve the estimated robot pose.
+
 ---
 ### Lessons
 
