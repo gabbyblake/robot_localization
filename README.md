@@ -10,12 +10,12 @@ The goal of this project was to find the location of a robot's pose in real time
 
 This problem can be solved by implementing a particle filter algorithm to find the most likely location of the robot at a given time, taking into the account the noise of sensors. The idea behind a particle filter is that particles are initialized throughout a given map to represent many possible poses (position and orientation) of the robot. Figure 2 shows this initialization of the particle cloud around the given robot pose estimate, with the robot's real position shown in Gazebo in Figure 1. As the robot moves through space, the particles are also updated to move similarly but with some noise added to account for the sensor imperfection and include poses of where the robot actually is and not just where the odometry sensor says it is.
 
-![Figure 1](gazebo_initial.jpg)
-![Figure 2](initial_no_robot.jpg)
+![Figure 1](gazebo_initial.png)
+![Figure 2](initial_no_robot.png)
 
 In order to evaluate the probability a given particle represents where the robot actually is, the laser scans the robot is publishing are superimposed onto the map from the frame of each particle and the similarities between these scans and the real scan are evaluated such that particles with scans that have high similarity to the real scan are given higher weights as they are more likely poses. The particle filter's best estimate of the robot's real pose is the average of the particles' poses. A seen in Figure 3, the better the particle filter is working, the more aligned the red laser scan of the map is aligned to the real map shown in black and white.
 
-![Figure 3](good_pic_initial.jpg)
+![Figure 3](good_pic_initial.png)
 
 This process is then repeated over and over such that particles are resampled according to their weights. So more particles are initialized in the next iteration in the areas of the map where particles with high weights from the previous iteration existed, until the particles converge around the area the robot is most likely to be.
 
