@@ -16,7 +16,6 @@ This problem can be solved by implementing a particle filter algorithm to find t
 
 In order to evaluate the probability a given particle represents where the robot actually is, the laser scans the robot is publishing are superimposed onto the map from the frame of each particle and the similarities between these scans and the real scan are evaluated such that particles with scans that have high similarity to the real scan are given higher weights as they are more likely poses. The particle filter's best estimate of the robot's real pose is the average of the particles' poses. A seen in Figure 3, the better the particle filter is working, the more aligned the red laser scan of the map is aligned to the real map shown in black and white.
 
-![Figure 3](good_pic_initial.png)
 <img src="good_pic_initial.png" alt="Figure 3" width="500" height="500"/>
 
 This process is then repeated over and over such that particles are resampled according to their weights. So more particles are initialized in the next iteration in the areas of the map where particles with high weights from the previous iteration existed, until the particles converge around the area the robot is most likely to be.
