@@ -14,11 +14,11 @@ Figure 2 shows this initialization of the particle cloud around the initial robo
 
 Figure 1
 
-<img src="gazebo_initial.png" alt="Figure 1" width="400" height="400"/>
+<img src="images/gazebo_initial.png" alt="Figure 1" width="400" height="400"/>
 
 Figure 2
 
-<img src="initial_no_robot.png" alt="Figure 2" width="400" height="400"/>
+<img src="images/initial_no_robot.png" alt="Figure 2" width="400" height="400"/>
 
 
 
@@ -26,7 +26,7 @@ In order to evaluate the probability a given particle represents where the robot
 
 Figure 3
 
-<img src="good_pic_initial.png" alt="Figure 3" width="400" height="400"/>
+<img src="images/good_pic_initial.png" alt="Figure 3" width="400" height="400"/>
 
 
 This process is then repeated over and over such that particles are resampled according to their weights. So more particles are initialized in the next iteration in the areas of the map where particles with high weights from the previous iteration existed, until the particles converge around the area the robot is most likely to be.
@@ -35,7 +35,7 @@ If the particle filter begins to show signs that its prediction of the robot's p
 
 Figure 4
 
-<img src="green_arrow.png" alt="Figure 4" width="400" height="400"/>
+<img src="images/green_arrow.png" alt="Figure 4" width="400" height="400"/>
 
 
 A high level structure of how the particle filter was implemented in code is as follows:
