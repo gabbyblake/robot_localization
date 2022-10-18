@@ -10,23 +10,27 @@ The goal of this project was to find the location of a robot's pose in real time
 
 This problem can be solved by implementing a particle filter algorithm to find the most likely location of the robot at a given time, taking into the account the noise of sensors. The idea behind a particle filter is that particles are initialized throughout a given map to represent many possible poses (position and orientation) of the robot. Figure 2 shows this initialization of the particle cloud around the given robot pose estimate, with the robot's real position shown in Gazebo in Figure 1. As the robot moves through space, the particles are also updated to move similarly but with some noise added to account for the sensor imperfection and include poses of where the robot actually is and not just where the odometry sensor says it is.
 
-<img src="gazebo_initial.png" alt="Figure 1" width="500" height="500"/>
 Figure 1
-<img src="initial_no_robot.png" alt="Figure 2" width="500" height="500"/>
+<img src="gazebo_initial.png" alt="Figure 1" width="500" height="500"/>
+
 Figure 2
+<img src="initial_no_robot.png" alt="Figure 2" width="500" height="500"/>
+
 
 
 In order to evaluate the probability a given particle represents where the robot actually is, the laser scans the robot is publishing are superimposed onto the map from the frame of each particle and the similarities between these scans and the real scan are evaluated such that particles with scans that have high similarity to the real scan are given higher weights as they are more likely poses. The particle filter's best estimate of the robot's real pose is the average of the particles' poses. As seen in Figure 3, the better the particle filter is working, the more aligned the red laser scan of the map is aligned to the real map shown in black and white.
 
-<img src="good_pic_initial.png" alt="Figure 3" width="500" height="500"/>
 Figure 3
+<img src="good_pic_initial.png" alt="Figure 3" width="500" height="500"/>
+
 
 This process is then repeated over and over such that particles are resampled according to their weights. So more particles are initialized in the next iteration in the areas of the map where particles with high weights from the previous iteration existed, until the particles converge around the area the robot is most likely to be.
 
-If the particle filter begins to show signs that it's prediction of the robot's pose has become too off, one can give the filter a new initial estimate to "reset" the filter. Giving the filter a new initial pose through Rviz is shown below in Figure 4. The green arrow represents the new pose with its direction being orientation and its tail being the *x,y* position.
+If the particle filter begins to show signs that its prediction of the robot's pose has become too off, one can give the filter a new initial estimate to "reset" the filter. Giving the filter a new initial pose through Rviz is shown below in Figure 4. The green arrow represents the new pose with its direction being orientation and its tail being the *x,y* position.
 
-<img src="green_arrow.png" alt="Figure 4" width="500" height="500"/>
 Figure 4
+<img src="green_arrow.png" alt="Figure 4" width="500" height="500"/>
+
 
 A high level structure of how the particle filter was implemented in code is as follows:
 1. Initialize a set of particles in the map frame via random sampling
