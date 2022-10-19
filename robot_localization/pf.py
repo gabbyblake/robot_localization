@@ -298,7 +298,7 @@ class ParticleFilter(Node):
                     if not math.isnan(distance):
                         if distance == 0.0:
                             particle.w = particle.w + 1
-            #update weigth array
+            #update weight array
             self.weight_distribution.append(particle.w)
 
     def update_robot_pose(self):
@@ -316,9 +316,14 @@ class ParticleFilter(Node):
         mean_y = sum(self.y_distribution) / self.n_particles
         mean_theta = sum(self.theta_distribution) / self.n_particles
 
-        mean_cos = [math.cos(theta) for theta in self.theta_distribution]
-        mean_sin = [math.sin(theta) for theta in self.theta_distribution]
 
+        # Method 2, most likely pose
+        #best_particle = mode(self.particle_cloud)
+        # print(best_particle)
+        # highest_weight = mode(self.particle_cloud)
+        # index = self.weight_distribution.index(highest_weight)
+        # best_particle = self.particle_cloud[index]
+        #pose = self.xy_theta_to_pose(best_particle.x, best_particle.y, best_particle.theta)
     
         # a little hard coding to make the robot's pose a bit better
         if  0 < mean_theta < math.pi/2:
@@ -339,12 +344,7 @@ class ParticleFilter(Node):
         pose = self.xy_theta_to_pose(mean_x + extra_x, mean_y + extra_y, mean_theta)
 
 
-        # Method 2, most likely pose
-        # best_particle = mode(self.particle_cloud)
-        # highest_weight = mode(self.particle_cloud)
-        # index = self.weight_distribution.index(highest_weight)
-        # best_particle = self.particle_cloud[index]
-        # pose = self.xy_theta_to_pose(best_particle.x, best_particle.y, best_particle.theta)
+        
 
         # just to get started we will fix the robot's pose to always be at the origin
         self.robot_pose = pose
